@@ -64,55 +64,63 @@ def about(request):
 
 
 def add_category(request):
-    form = CategoryForm()
 
-    # A HTTP POST?
-    if request.method == 'POST':
-        form = CategoryForm(request.POST)
+    if request.user.is_authenticated:
+        form = CategoryForm()
 
-        # Have we been provided with a valid form?
-        if form.is_valid():
-            # Save the new category to the database.
-            form.save(commit=True)
-            # Now that the category is saved, we could confirm this.
-            # For now, just redirect the user back to the index view.
-            return redirect(reverse('rango:index'))
-        else:
-            # The supplied form contained errors -
-            # just print them to the terminal.
-            print(form.errors)
+        # A HTTP POST?
+        if request.method == 'POST':
+            form = CategoryForm(request.POST)
 
-    # Will handle the bad form, new form, or no form supplied cases.
-    # Render the form with error messages (if any).
-    return render(request, 'rango/add_category.html', {'form': form})
+            # Have we been provided with a valid form?
+            if form.is_valid():
+                # Save the new category to the database.
+                form.save(commit=True)
+                # Now that the category is saved, we could confirm this.
+                # For now, just redirect the user back to the index view.
+                return redirect(reverse('rango:index'))
+            else:
+                # The supplied form contained errors -
+                # just print them to the terminal.
+                print(form.errors)
+
+        # Will handle the bad form, new form, or no form supplied cases.
+        # Render the form with error messages (if any).
+        return render(request, 'rango/add_category.html', {'form': form})
+
+    else:
+        return redirect(reverse("rango:login"))
 
 
 def add_page(request, category_name_slug):
-    try:
-        category = Category.objects.get(slug=category_name_slug)
-    except Category.DoesNotExist:
-        category = None
-    # You cannot add a page to a Category that does not exist...
-    if category is None:
-        return redirect(reverse('rango:index'))
+    if request.user.is_authenticated:
+        try:
+            category = Category.objects.get(slug=category_name_slug)
+        except Category.DoesNotExist:
+            category = None
+        # You cannot add a page to a Category that does not exist...
+        if category is None:
+            return redirect(reverse('rango:index'))
 
-    form = PageForm()
+        form = PageForm()
 
-    if request.method == 'POST':
-        form = PageForm(request.POST)
-        if form.is_valid():
-            if category:
-                page = form.save(commit=False)
-                page.category = category
-                page.views = 0
-                page.save()
-                return redirect(reverse('rango:show_category',
-                                        kwargs={'category_name_slug': category_name_slug}))
-        else:
-            print(form.errors)
+        if request.method == 'POST':
+            form = PageForm(request.POST)
+            if form.is_valid():
+                if category:
+                    page = form.save(commit=False)
+                    page.category = category
+                    page.views = 0
+                    page.save()
+                    return redirect(reverse('rango:show_category',
+                                            kwargs={'category_name_slug': category_name_slug}))
+            else:
+                print(form.errors)
 
-    context_dict = {'form': form, 'category': category}
-    return render(request, 'rango/add_page.html', context=context_dict)
+        context_dict = {'form': form, 'category': category}
+        return render(request, 'rango/add_page.html', context=context_dict)
+    else:
+        return redirect(reverse("rango:login"))
 
 
 def register(request):
@@ -132,7 +140,8 @@ def register(request):
             # Save the user's form data to the database.
             user = user_form.save()
             # Now we hash the password with the set_password method.
-            # Once hashed, we can update the user object. user.set_password(user.password)
+            # Once hashed, we can update the user object.
+            user.set_password(user.password)
             user.save()
 
             # Now sort out the UserProfile instance.
@@ -144,14 +153,16 @@ def register(request):
             profile.user = user
 
             # Did the user provide a profile picture?
-            # If so, we need to get it from the input form and #put it in the UserProfile model.
+            # If so, we need to get it from the input form and
+            # put it in the UserProfile model.
             if 'picture' in request.FILES:
                 profile.picture = request.FILES['picture']
 
             # Now we save the UserProfile model instance.
             profile.save()
 
-            # Update our variable to indicate that the template # registration was successful.
+            # Update our variable to indicate that the template
+            # registration was successful.
             registered = True
 
         else:
@@ -222,7 +233,7 @@ def some_view(request):
 
 @login_required
 def restricted(request):
-    return HttpResponse("Since you're logged in, you can see this text!")
+    return render(request, "rango/restricted.html")
 
 
 # Use the login_required() decorator to ensure only those logged in can
